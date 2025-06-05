@@ -1,50 +1,37 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
 
 // Initialize OpenAI
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Global MCP client
+// Global MCP client (will be reused across function calls)
 let mcpClient = null;
 let mcpConnected = false;
 
 // Initialize MCP client
 async function initializeMCP() {
+    if (mcpConnected && mcpClient) return mcpClient;
+    
     try {
         mcpClient = new Client({
             name: 'playwright-client',
             version: '1.0.0'
         });
 
-        const transport = new SSEClientTransport(new URL('http://localhost:8931/sse'));
+        // Note: You'll need to replace this with your hosted Playwright server URL
+        const transport = new SSEClientTransport(new URL(process.env.PLAYWRIGHT_SERVER_URL || 'http://localhost:8931/sse'));
         await mcpClient.connect(transport);
         mcpConnected = true;
         console.log('MCP client connected successfully');
         
-        // Get available tools
-        const tools = await mcpClient.listTools();
-        console.log(`Available tools: ${tools.tools.length}`);
-        
-        return tools;
+        return mcpClient;
     } catch (error) {
         console.error('Failed to initialize MCP client:', error);
         mcpConnected = false;
-        return null;
+        throw error;
     }
 }
 
@@ -77,28 +64,20 @@ function createToolDefinitions(mcpTools) {
     }));
 }
 
-// Routes
-app.get('/api/status', async (req, res) => {
-    res.json({ 
-        mcpConnected,
-        openaiConfigured: !!process.env.OPENAI_API_KEY
-    });
-});
-
-app.get('/api/tools', async (req, res) => {
-    try {
-        if (!mcpConnected) {
-            await initializeMCP();
-        }
-        
-        const tools = await mcpClient.listTools();
-        res.json(tools);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+export default async function handler(req, res) {
+    // Handle CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
     }
-});
+    
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-app.post('/api/chat', async (req, res) => {
     try {
         const { message } = req.body;
         
@@ -106,10 +85,8 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: 'Message is required' });
         }
 
-        // Ensure MCP is connected
-        if (!mcpConnected) {
-            await initializeMCP();
-        }
+        // Initialize MCP client
+        await initializeMCP();
 
         // Get available tools
         const mcpTools = await mcpClient.listTools();
@@ -118,25 +95,17 @@ app.post('/api/chat', async (req, res) => {
         // Create system message
         const systemMessage = {
             role: "system",
-            content: `You are an AI assistant that can control a web browser using Playwright tools. You have access to various browser automation tools that can help you navigate websites, take screenshots, click elements, type text, and more.
+            content: `You are an AI assistant that can control a web browser using Playwright tools. The browser runs on a server, and users can see the results through screenshots and snapshots.
 
-Available tools include:
+Available tools include browser automation capabilities like:
 - browser_navigate: Navigate to URLs
-- browser_click: Click on elements
+- browser_click: Click on elements  
 - browser_type: Type text into inputs
 - browser_take_screenshot: Take screenshots
 - browser_snapshot: Get accessibility snapshots
 - browser_wait_for: Wait for elements or conditions
-- And many more browser automation tools
 
-When a user asks you to do something with a website, use the appropriate tools to accomplish the task step by step. For example:
-1. First navigate to the appropriate website
-2. Take a screenshot or snapshot to see what's on the page
-3. Perform the required actions (click, type, etc.)
-4. Take another screenshot to show the results
-5. Continue until the task is fully completed
-
-Always complete the full task the user requests - don't stop after just one action.`
+Always complete the full task step by step and provide screenshots to show progress.`
         };
 
         // Initialize conversation messages
@@ -147,14 +116,13 @@ Always complete the full task the user requests - don't stop after just one acti
 
         let allToolResults = [];
         let finalResponse = '';
-        let maxIterations = 10; // Prevent infinite loops
+        let maxIterations = 8; // Reduced for serverless function limits
         let iteration = 0;
 
         // Continue conversation until no more tool calls are needed
         while (iteration < maxIterations) {
             iteration++;
             
-            // Call OpenAI with function calling
             const completion = await openai.chat.completions.create({
                 model: "gpt-4",
                 messages: messages,
@@ -165,13 +133,12 @@ Always complete the full task the user requests - don't stop after just one acti
             const assistantMessage = completion.choices[0].message;
             messages.push(assistantMessage);
 
-            // If no tool calls, we're done
             if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
                 finalResponse = assistantMessage.content || '';
                 break;
             }
 
-            // Execute all tool calls in this round
+            // Execute tool calls
             const toolResults = [];
             for (const toolCall of assistantMessage.tool_calls) {
                 try {
@@ -189,7 +156,6 @@ Always complete the full task the user requests - don't stop after just one acti
                     toolResults.push(toolResult);
                     allToolResults.push(toolResult);
 
-                    // Add tool result to conversation
                     messages.push({
                         role: "tool",
                         tool_call_id: toolCall.id,
@@ -206,7 +172,6 @@ Always complete the full task the user requests - don't stop after just one acti
                     toolResults.push(toolResult);
                     allToolResults.push(toolResult);
 
-                    // Add error result to conversation
                     messages.push({
                         role: "tool",
                         tool_call_id: toolCall.id,
@@ -214,11 +179,9 @@ Always complete the full task the user requests - don't stop after just one acti
                     });
                 }
             }
-
-            console.log(`Iteration ${iteration}: Executed ${toolResults.length} tools`);
         }
 
-        // If we hit max iterations, get a final response
+        // Get final response if needed
         if (iteration >= maxIterations && !finalResponse) {
             const finalCompletion = await openai.chat.completions.create({
                 model: "gpt-4",
@@ -230,20 +193,13 @@ Always complete the full task the user requests - don't stop after just one acti
             finalResponse = finalCompletion.choices[0].message.content || 'Task completed.';
         }
 
-        res.json({
+        return res.status(200).json({
             response: finalResponse,
             toolResults: allToolResults
         });
 
     } catch (error) {
         console.error('Chat error:', error);
-        res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message });
     }
-});
-
-// Initialize MCP on startup
-initializeMCP();
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-}); 
+} 

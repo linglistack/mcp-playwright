@@ -6,11 +6,14 @@
     "type": "module",
     "scripts": {
         "start": "node src/index.js",
-        "dev": "concurrently \"npm run server\" \"npm run client\"",
+        "dev": "concurrently \"npm run playwright-server\" \"npm run server\" \"npm run client\"",
+        "dev-full": "concurrently \"npm run playwright-server\" \"npm run server\" \"npm run client\"",
         "server": "node src/server.js",
         "client": "cd frontend && npm start",
+        "playwright-server": "npx @playwright/mcp --port 8931",
         "build": "cd frontend && npm run build",
-        "install-frontend": "cd frontend && npm install"
+        "install-frontend": "cd frontend && npm install",
+        "install-playwright": "npx playwright install"
     },
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.12.1",
@@ -19,5 +22,8 @@
         "cors": "^2.8.5",
         "openai": "^4.28.0",
         "concurrently": "^8.2.2"
+    },
+    "devDependencies": {
+        "@playwright/mcp": "latest"
     }
 }

@@ -21,6 +21,9 @@ function App() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Use environment variable or default to localhost for development
+  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001';
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -36,7 +39,7 @@ function App() {
 
   const checkStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/status');
+      const response = await fetch(`${API_BASE}/api/status`);
       const statusData = await response.json();
       setStatus(statusData);
     } catch (error) {
@@ -59,7 +62,7 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/api/chat', {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,6 +119,9 @@ function App() {
           <span className={`status-dot ${status?.openaiConfigured ? 'connected' : 'disconnected'}`}></span>
           OpenAI: {status?.openaiConfigured ? 'Configured' : 'Not Configured'}
         </div>
+        <div className="info-banner">
+          ⚡ Browser automation runs on our server - you'll see screenshots of the results!
+        </div>
       </header>
 
       <main className="chat-container">
@@ -123,16 +129,15 @@ function App() {
           {messages.length === 0 && (
             <div className="welcome-message">
               <h3>Welcome to Playwright MCP Client!</h3>
-              <p>You can ask me to:</p>
+              <p>🌐 Control a remote browser with natural language commands:</p>
               <ul>
-                <li>Navigate to websites</li>
-                <li>Take screenshots</li>
-                <li>Click on elements</li>
-                <li>Fill out forms</li>
-                <li>Extract information from pages</li>
-                <li>And much more!</li>
+                <li>🔍 "Search for restaurants near me on Google"</li>
+                <li>📸 "Navigate to github.com and take a screenshot"</li>
+                <li>🖱️ "Click on the search button and type hello world"</li>
+                <li>📊 "Go to example.com and extract all the text"</li>
+                <li>🛒 "Navigate to an online store and add an item to cart"</li>
               </ul>
-              <p>Try asking: "Navigate to google.com and take a screenshot"</p>
+              <p>💡 The browser runs on our server, so you'll see live screenshots of the automation!</p>
             </div>
           )}
 
@@ -147,28 +152,34 @@ function App() {
               </div>
               {message.toolResults && message.toolResults.length > 0 && (
                 <div className="tool-results">
-                  <h4>Tool Results:</h4>
+                  <h4>🛠️ Automation Results:</h4>
                   {message.toolResults.map((result, index) => (
                     <div key={index} className="tool-result">
-                      <strong>{result.toolName}</strong>
+                      <strong>🔧 {result.toolName}</strong>
                       {result.error ? (
-                        <div className="error">Error: {result.error}</div>
+                        <div className="error">❌ Error: {result.error}</div>
                       ) : (
-                        <div className="success">✓ Executed successfully</div>
+                        <div className="success">✅ Executed successfully</div>
                       )}
                       {result.result && result.result.content && (
                         <div className="result-content">
                           {result.result.content.map((item: any, idx: number) => (
                             <div key={idx}>
                               {item.type === 'image' && (
-                                <img
-                                  src={`data:image/png;base64,${item.data}`}
-                                  alt="Screenshot"
-                                  style={{ maxWidth: '100%', height: 'auto' }}
-                                />
+                                <div className="screenshot-container">
+                                  <h5>📸 Screenshot:</h5>
+                                  <img
+                                    src={`data:image/png;base64,${item.data}`}
+                                    alt="Browser Screenshot"
+                                    style={{ maxWidth: '100%', height: 'auto', border: '1px solid #ddd', borderRadius: '4px' }}
+                                  />
+                                </div>
                               )}
                               {item.type === 'text' && (
-                                <pre>{item.text}</pre>
+                                <div className="text-result">
+                                  <h5>📝 Text Output:</h5>
+                                  <pre>{item.text}</pre>
+                                </div>
                               )}
                             </div>
                           ))}
@@ -192,6 +203,9 @@ function App() {
                   <span></span>
                   <span></span>
                 </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', opacity: '0.7' }}>
+                  🤖 Processing your request and controlling the browser...
+                </div>
               </div>
             </div>
           )}
@@ -204,7 +218,7 @@ function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Type your message here... (Enter to send, Shift+Enter for new line)"
+            placeholder="Type your browser automation command here... (e.g., 'Navigate to google.com and search for cats')"
             disabled={loading}
             rows={3}
           />
@@ -213,7 +227,7 @@ function App() {
             disabled={loading || !input.trim()}
             className="send-button"
           >
-            {loading ? 'Sending...' : 'Send'}
+            {loading ? '🔄 Automating...' : '🚀 Execute'}
           </button>
         </div>
       </main>
