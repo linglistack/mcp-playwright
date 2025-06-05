@@ -35,7 +35,7 @@ if [ ! -f ".env" ]; then
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Server Configuration
-PORT=3001
+PORT=3000
 EOL
     echo "⚠️  Please edit .env file and add your OpenAI API key"
 fi
@@ -49,4 +49,4 @@ echo "2. Make sure your Playwright MCP server is running on http://localhost:893
 echo "3. Run 'npm run dev' to start both frontend and backend"
 echo ""
 echo "Frontend will be available at: http://localhost:3000"
-echo "Backend API will be available at: http://localhost:3001" 
+echo "Backend API will be available at: http://localhost:3000" 

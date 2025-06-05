@@ -36,7 +36,7 @@ function App() {
 
   const checkStatus = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/status');
+      const response = await fetch('http://localhost:3000/api/status');
       const statusData = await response.json();
       setStatus(statusData);
     } catch (error) {
@@ -59,7 +59,7 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/chat', {
+      const response = await fetch('http://localhost:3000/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

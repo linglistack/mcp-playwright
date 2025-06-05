@@ -33,7 +33,7 @@ Create a `.env` file in the root directory:
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Server Configuration
-PORT=3001
+PORT=3000
 ```
 
 ### 3. Install Dependencies
@@ -72,7 +72,7 @@ npm run client
 ### 5. Access the Application
 
 - Frontend: http://localhost:3000
-- Backend API: http://localhost:3001
+- Backend API: http://localhost:3000
 
 ## Usage Examples
 
@@ -171,7 +171,7 @@ Sends a message to be processed by OpenAI and executes appropriate tools.
    - Ensure the API key has sufficient credits
 
 3. **Frontend Can't Connect to Backend**
-   - Verify the backend is running on port 3001
+   - Verify the backend is running on port 3000
    - Check for CORS issues
 
 ### Debug Mode
