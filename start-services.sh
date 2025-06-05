@@ -38,8 +38,15 @@ echo "⏳ Waiting for application server to initialize..."
 sleep 5
 
 echo "🎉 All services started!"
-echo "📊 Application: http://localhost:3001"
-echo "🎭 Playwright: http://localhost:8931"
+
+# Show URLs (Railway sets RAILWAY_PUBLIC_DOMAIN)
+if [ ! -z "$RAILWAY_PUBLIC_DOMAIN" ]; then
+    echo "📊 Application: https://$RAILWAY_PUBLIC_DOMAIN"
+    echo "🌐 Your app is live and ready!"
+else
+    echo "📊 Application: http://localhost:3001"
+fi
+echo "🎭 Playwright MCP: http://localhost:8931 (internal)"
 
 # Keep the script running and wait for processes
 wait $APP_PID 

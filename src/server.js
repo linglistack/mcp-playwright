@@ -4,8 +4,13 @@ import dotenv from 'dotenv';
 import OpenAI from 'openai';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,6 +18,9 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, '../frontend/build')));
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -239,6 +247,11 @@ Always complete the full task the user requests - don't stop after just one acti
         console.error('Chat error:', error);
         res.status(500).json({ error: error.message });
     }
+});
+
+// Serve React app for all non-API routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
 });
 
 // Initialize MCP on startup
