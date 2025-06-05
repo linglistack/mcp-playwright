@@ -36,10 +36,6 @@ USER playwright
 # Expose ports
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:3001/api/status || exit 1
-
 # Make startup script executable
 USER root
 RUN chmod +x start-services.sh

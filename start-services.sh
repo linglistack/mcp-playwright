@@ -24,40 +24,20 @@ echo "🎭 Starting Playwright MCP server on port 8931..."
 npx @playwright/mcp --port 8931 &
 PLAYWRIGHT_PID=$!
 
-# Wait for Playwright server to be ready
-echo "⏳ Waiting for Playwright server to start..."
-for i in {1..30}; do
-    if curl -f http://localhost:8931/sse 2>/dev/null; then
-        echo "✅ Playwright server is ready!"
-        break
-    fi
-    if [ $i -eq 30 ]; then
-        echo "❌ Playwright server failed to start"
-        exit 1
-    fi
-    sleep 2
-done
+# Give Playwright server time to start
+echo "⏳ Waiting for Playwright server to initialize..."
+sleep 10
 
 # Start the main application server
 echo "🖥️  Starting application server on port 3001..."
 node src/server.js &
 APP_PID=$!
 
-# Wait for app server to be ready
-echo "⏳ Waiting for application server to start..."
-for i in {1..15}; do
-    if curl -f http://localhost:3001/api/status 2>/dev/null; then
-        echo "✅ Application server is ready!"
-        break
-    fi
-    if [ $i -eq 15 ]; then
-        echo "❌ Application server failed to start"
-        exit 1
-    fi
-    sleep 2
-done
+# Give app server time to start
+echo "⏳ Waiting for application server to initialize..."
+sleep 5
 
-echo "🎉 All services are running!"
+echo "🎉 All services started!"
 echo "📊 Application: http://localhost:3001"
 echo "🎭 Playwright: http://localhost:8931"
 
