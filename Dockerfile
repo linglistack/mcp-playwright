@@ -19,8 +19,8 @@ RUN npm cache clean --force
 RUN npm ci --only=production --no-optional
 RUN cd frontend && npm cache clean --force && npm ci --only=production --no-optional
 
-# Install Playwright browsers and dependencies
-RUN npx playwright install --with-deps chromium
+# Install Playwright browsers and dependencies (including chrome)
+RUN npx playwright install --with-deps chrome chromium firefox
 
 # Copy source code
 COPY . .
