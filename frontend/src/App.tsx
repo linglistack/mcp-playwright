@@ -21,8 +21,8 @@ function App() {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Use environment variable or default to localhost for development
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3001';
+  // Use relative URLs by default (works with proxy in dev and same domain in production)
+  const API_BASE = process.env.REACT_APP_API_BASE || '';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
