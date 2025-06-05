@@ -4,29 +4,46 @@ FROM mcr.microsoft.com/playwright:v1.40.0-focal
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Set npm configuration for better reliability
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm config set fetch-retries 3
+RUN npm config set fetch-retry-mintimeout 10000
+RUN npm config set fetch-retry-maxtimeout 60000
+
+# Copy package files first for better Docker layer caching
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 
-# Install dependencies
-RUN npm install
-RUN cd frontend && npm install
+# Install dependencies with clean slate
+RUN npm cache clean --force
+RUN npm ci --only=production --no-optional
+RUN cd frontend && npm cache clean --force && npm ci --only=production --no-optional
 
-# Install Playwright browsers
-RUN npx playwright install
+# Install Playwright browsers and dependencies
+RUN npx playwright install --with-deps chromium
 
 # Copy source code
 COPY . .
 
-# Build frontend
+# Build frontend for production
 RUN cd frontend && npm run build
 
-# Expose ports
-EXPOSE 3001 8931
+# Create non-root user for security
+RUN useradd -m -s /bin/bash playwright
+RUN chown -R playwright:playwright /app
+USER playwright
 
-# Create startup script
-COPY start-services.sh ./
+# Expose ports
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3001/api/status || exit 1
+
+# Make startup script executable
+USER root
 RUN chmod +x start-services.sh
+USER playwright
 
 # Start both services
 CMD ["./start-services.sh"] 
